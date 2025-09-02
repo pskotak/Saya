@@ -1,3 +1,9 @@
 [submodule "vision"]
 	path = vision
 	url = git@github.com:pskotak/vision.git
+[submodule "SayaGlobals"]
+	path = SayaGlobals
+	url = git@github.com:pskotak/SayaGlobals.git
+[submodule "LocalMap"]
+	path = LocalMap
+	url = git@github.com:pskotak/LocalMap.git
