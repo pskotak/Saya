@@ -12,6 +12,7 @@
 #include "cpm4.h"
 #include "gps.h"
 #include "joystick.h"
+#include "logger.h"
 
 bool parseGeoString(const std::string& geoString, double& lat, double& lon) {
     try {
@@ -54,6 +55,7 @@ int main(int argc, char **argv) {
     cv::Mat processed_frame;
     std::string Qr,OldQr = "";
     bool JoyOK = true;
+    bool AutoLog = false;
     int32_t Lat = 0; // Lat North positive - RMC, format v desetinach stupne * 1E7
     int32_t Lon = 0;
     int32_t GoalLat = 0;
@@ -62,11 +64,25 @@ int main(int argc, char **argv) {
     double fGoalLon = 0.0;
 
     int Cnt = 0;
+
+    float yaw_rad,R;
+// Dummy log variables
+    float setVelocity = 0.0;
+    float setAngularVelocity = 0.0;
+    float omegaL = 0.0;
+    float omegaR = 0.0;
+
 // ----------------------------------------------------------------------------
 
     std::cout << ProgVersion << std::endl;
     std::cout << "Exit program by pressing \"BigRed\" and next \"Mission start\" buttons OR Joystick X" << std::endl;
     ReadConfig();
+    if (!config.contains("logging")) {
+        config["logging"]["autolog"] = false; // Vytvoril jsem si udev rule
+        WriteConfig();
+    }
+    AutoLog = config["logging"]["autolog"];
+    std::cout << ">>> AutoLog: " << AutoLog << std::endl;
 
     std::cout << "Starting CPM4 thread..." << std::endl;
     CPM4Thread = std::thread(&RunCom);
@@ -119,6 +135,28 @@ int main(int argc, char **argv) {
             //std::cout << "Mission released" << std::endl;
         }
 
+        if (MissionPressed) {
+            if (AutoLog) {
+                if (!logger::Logging) {
+                    logger::StartLog();
+                }
+                // if (logger::Logging) {
+                //     logger::EndLog();
+                // }
+                // else {
+                //     logger::StartLog();
+                // }
+            }
+        }
+
+        // if (BigRedPressed) {
+        //     if (AutoLog) {
+        //         if (logger::Logging) {
+        //             logger::EndLog();
+        //         }
+        //     }
+        // }
+
         if (NewGPS) {
             Lat = GPSData.Lat;
             Lon = GPSData.Lon;
@@ -134,7 +172,7 @@ int main(int argc, char **argv) {
                 std::cout << "\x1b[3F" << "<GPS> Fix: " << GPSData.Fix << " Lat: " << Lat*1e-7 << " Lon: " << Lon*1e-7 << " GLat: " << GoalLat*1e-7 << " GLon: " << GoalLon*1e-7 << " Alive: " << Cnt++ << std::endl;
                 //std::cout << "\x1b[3F" << "Counter: " << Cnt << "                                   " << std::endl;
             }
-            std::cout << "<Platform> " << "IDLE" << std::endl;
+            std::cout << "<Platform> " << "IDLE" << " Log: " << logger::Logging << std::endl;
             std::cout << "<Mission> " << "IDLE" << std::endl;
 // END Status screen ----------------------------------------------------------
             NewGPS = false;
@@ -162,14 +200,14 @@ int main(int argc, char **argv) {
             }
             if (joy.TrigB) {
                 joy.TrigB = false;
-                // if (Logging) {
-                //     std::cout << "> LOG End" << std::endl;
-                //     EndLog();
-                // }
-                // else {
-                //     std::cout << "> LOG Start" << std::endl;
-                //     StartLog();
-                // }
+                if (logger::Logging) {
+                    //std::cout << "> LOG End" << std::endl;
+                    logger::EndLog();
+                }
+                else {
+                    //std::cout << "> LOG Start" << std::endl;
+                    logger::StartLog();
+                }
             }
             // if (joy.TrigRightFireSW) {
             //     joy.TrigRightFireSW = false;
@@ -180,10 +218,12 @@ int main(int argc, char **argv) {
 
         vision::Frame();
         if (vision::NewD455) {
+            vision::depth_image16.convertTo(processed_frame,CV_8U,255.0 / D455depth_color_max,0.0);
+            cv::applyColorMap(processed_frame,processed_frame,cv::COLORMAP_JET);
+            cv::imshow("Depth",processed_frame);
+
             Qr = qr::GetCode(vision::RGB_image);
-            //if (!Qr.empty() && (OldQr != Qr) ) {
             if (!Qr.empty()) {
-                //std::cout << "Qr: " << Qr << std::endl;
                 if (parseGeoString(Qr,fGoalLat,fGoalLon)) {
                     GoalLat = round(fGoalLat * 1e7);
                     GoalLon = round(fGoalLon * 1e7);
@@ -191,8 +231,45 @@ int main(int argc, char **argv) {
                 }
             }
             OldQr = Qr;
-            //cv::imshow("RGB",vision::RGB_image);
 
+            if (mainT265_lock.try_lock()) {
+//                 Yaw = rs_yaw;
+//                 YawRad = rs_yaw_rad;
+//                 Pitch = rs_pitch;
+//                 Roll = rs_roll;
+//                 Velocity = rs_velocity;
+//                 AngularVelocity = rs_angular_velo;
+//                 PosX = rs_x;
+//                 PosY = rs_y;
+//                 PosZ = rs_z;
+                yaw_rad = t265::rs_yaw_rad;
+                BotPos = t265::rs_BotPos;
+                BotOrientation = t265::rs_BotOrientation;
+                mainT265_lock.unlock();
+            }
+
+// Create log record
+            if (logger::Logging) {
+                //LogRec.RecNo = RecCnt; -> Doplni si logger
+                logger::LogRec.Pose = t265::Pose; //platformPose;
+                logger::LogRec.setVelocity = setVelocity;
+                logger::LogRec.setAngularVelocity = setAngularVelocity;
+                logger::LogRec.omegaL = omegaL;
+                logger::LogRec.omegaR = omegaR;
+                //LogRec.Timestamp = milliseconds_count; -> Doplni si logger
+                logger::LogRec.UTCTime = GPSData.UTCTime; // UTC time - RMC
+                logger::LogRec.UTCDate = GPSData.UTCDate;
+                logger::LogRec.Lat = GPSData.Lat;
+                logger::LogRec.Lon = GPSData.Lon;
+                logger::LogRec.Brg = GPSData.Hdg;
+                logger::LogRec.Fix = GPSData.Fix;
+
+                logger::rgbData = vision::RGB_image.data;
+                logger::depthData = reinterpret_cast<unsigned char*>(vision::depth_image16.data); // Cast depth data
+                logger::WriteLogRec();
+            }
+
+            //cv::imshow("RGB",vision::RGB_image);
             vision::NewD455 = false;
         }
 
@@ -219,7 +296,11 @@ int main(int argc, char **argv) {
         if (key == 27) { // ESC key
             QuitProgram = true;
         }
-        //usleep(2000);
+        usleep(2000);
+    }
+
+    if (logger::Logging) {
+        logger::EndLog();
     }
 
     std::cout << "-------------------------" << std::endl;

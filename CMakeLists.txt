@@ -45,11 +45,12 @@ set(SOURCE_FILES
     config.cpp
     cpm4.cpp
     gps.cpp
+    logger.cpp
     main.cpp
 )
 
 add_executable(saya ${SOURCE_FILES})
 
-target_link_libraries(saya ${DEPENDENCIES} ${OpenCV_LIBS} ZXing::ZXing)
+target_link_libraries(saya ${DEPENDENCIES} ${OpenCV_LIBS} ZXing::ZXing zstd usb-1.0)
 
 install(TARGETS saya RUNTIME DESTINATION bin)

@@ -29,6 +29,8 @@ extern float rs_yaw_rad;
 extern float rs_raw_x;
 extern float rs_raw_y;
 extern float rs_raw_z;
+// Raw pose
+extern struct rs2_pose Pose;
 
 extern std::atomic<bool> NewT265;
 extern std::atomic<bool> ShutdownT265;

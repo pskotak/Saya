@@ -32,6 +32,9 @@ float rs_raw_aVelo_x;
 float rs_raw_aVelo_y;
 float rs_raw_aVelo_z;
 
+// Raw pose
+struct rs2_pose Pose;
+
 // glm::vec3 BotPos;
 //         BotPos.x = Telemetry.Pose.translation.x;
 //         BotPos.y = Telemetry.Pose.translation.y;
@@ -67,7 +70,7 @@ void RunT265() {
         if (pose_frame) {
             if (T265_lock.try_lock()) {
 // CalcEulerPose
-                struct rs2_pose Pose;
+                // struct rs2_pose Pose;
                 Pose = pose_frame.as<rs2::pose_frame>().get_pose_data();
 
                 auto w = Pose.rotation.w;
