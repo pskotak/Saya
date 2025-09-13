@@ -56,10 +56,12 @@ int main(int argc, char **argv) {
     bool JoyOK = true;
     int32_t Lat = 0; // Lat North positive - RMC, format v desetinach stupne * 1E7
     int32_t Lon = 0;
-    int32_t GoalLat;
-    int32_t GoalLon;
-    double fGoalLat;
-    double fGoalLon;
+    int32_t GoalLat = 0;
+    int32_t GoalLon = 0;
+    double fGoalLat = 0.0;
+    double fGoalLon = 0.0;
+
+    int Cnt = 0;
 // ----------------------------------------------------------------------------
 
     std::cout << ProgVersion << std::endl;
@@ -87,34 +89,54 @@ int main(int argc, char **argv) {
     t265::t265_serial_number = vision::t265_serial_number; // vision::GetSerNo(); aktualizuje i T265 serial number
     T265Thread = std::thread(&t265::RunT265);
 
+    //std::cout << std::endl << std::endl << std::endl;
+    sleep(2);
+
+    bool First = true;
+
     while (!QuitProgram) {
         if (BigRedOn) {
             BigRedOn = false;
             BigRedSwitch = true; // Aktivni brzdeni (Speed = 0, Dir - 0)
             BigRedPressed = true;
-            std::cout << "BigRed PRESSED" << std::endl;
+            //std::cout << "BigRed PRESSED" << std::endl;
         }
         if (BigRedOff) {
             BigRedOff = false;
             BigRedSwitch = false;
             BigRedReleased = true;
             //odrive.SetIdle = true; // Idle - prestat budit motory na nulovou rychlost
-            std::cout << "BigRed released" << std::endl;
+            //std::cout << "BigRed released" << std::endl;
         }
         if (MissionOn) {
             MissionOn = false;
             MissionPressed = true;
-            std::cout << "Mission PRESSED" << std::endl;
+            //std::cout << "Mission PRESSED" << std::endl;
         }
         if (MissionOff) {
             MissionOff = false;
             MissionReleased = true;
-            std::cout << "Mission released" << std::endl;
+            //std::cout << "Mission released" << std::endl;
         }
 
         if (NewGPS) {
             Lat = GPSData.Lat;
             Lon = GPSData.Lon;
+
+// BEGIN Status screen --------------------------------------------------------
+            if (First) {
+                 First = false;
+                 std::cout << "-------------------------" << std::endl;
+                 //std::cout << "Counter: " << Cnt << std::endl;
+                 std::cout << "<GPS> Fix: " << GPSData.Fix << " Lat: " << Lat*1e-7 << " Lon: " << Lon*1e-7 << " GLat: " << GoalLat*1e-7 << " GLon: " << GoalLon*1e-7 << " Alive: " << Cnt++ << std::endl;
+            }
+            else {
+                std::cout << "\x1b[3F" << "<GPS> Fix: " << GPSData.Fix << " Lat: " << Lat*1e-7 << " Lon: " << Lon*1e-7 << " GLat: " << GoalLat*1e-7 << " GLon: " << GoalLon*1e-7 << " Alive: " << Cnt++ << std::endl;
+                //std::cout << "\x1b[3F" << "Counter: " << Cnt << "                                   " << std::endl;
+            }
+            std::cout << "<Platform> " << "IDLE" << std::endl;
+            std::cout << "<Mission> " << "IDLE" << std::endl;
+// END Status screen ----------------------------------------------------------
             NewGPS = false;
         }
 
@@ -125,18 +147,18 @@ int main(int argc, char **argv) {
                 joy.TrigArm = false;
                 if (BigRedSwitch == false) { // Nepovolit armovani pri stisknutem BigRed
                     //odrive.SetArm = true;
-                    std::cout << ">>> Joy ARM" << std::endl;
+                    //std::cout << ">>> Joy ARM" << std::endl;
                 }
             }
             if (joy.TrigIdle) {
                 joy.TrigIdle = false;
                 //odrive.SetIdle = true;
-                std::cout << ">>> Joy IDLE" << std::endl;
+                //std::cout << ">>> Joy IDLE" << std::endl;
             }
             if (joy.TrigX) {
                 joy.TrigX = false;
                 QuitProgram = true;
-                std::cout << ">>> Joy X" << std::endl;
+                //std::cout << ">>> Joy X" << std::endl;
             }
             if (joy.TrigB) {
                 joy.TrigB = false;
@@ -161,15 +183,15 @@ int main(int argc, char **argv) {
             Qr = qr::GetCode(vision::RGB_image);
             //if (!Qr.empty() && (OldQr != Qr) ) {
             if (!Qr.empty()) {
-                std::cout << "Qr: " << Qr << std::endl;
+                //std::cout << "Qr: " << Qr << std::endl;
                 if (parseGeoString(Qr,fGoalLat,fGoalLon)) {
                     GoalLat = round(fGoalLat * 1e7);
                     GoalLon = round(fGoalLon * 1e7);
-                    std::cout << "Lat: " << GoalLat << " Lon: " << GoalLon << std::endl;
+                    //std::cout << "\x1b[A" << "Lat: " << GoalLat << " Lon: " << GoalLon << std::endl;
                 }
             }
             OldQr = Qr;
-            cv::imshow("RGB",vision::RGB_image);
+            //cv::imshow("RGB",vision::RGB_image);
 
             vision::NewD455 = false;
         }
@@ -200,6 +222,7 @@ int main(int argc, char **argv) {
         //usleep(2000);
     }
 
+    std::cout << "-------------------------" << std::endl;
     std::cout << "down T265" << std::endl;
     t265::ShutdownT265 = true;
     T265Thread.join();
