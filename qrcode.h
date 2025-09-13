@@ -1,16 +1,13 @@
 #ifndef QRCODE_H
 #define QRCODE_H
 
-//#include <cstdint>
+#include <string>
+#include "SayaGlobals/globals.h"
 
 namespace qr {
+    
+extern std::string GetCode(cv::Mat image);
 
-// class empty {
-//     uint8_t test;
-// public:
-//     empty();
-//     ~empty();
-// } // end class
     
 } // end namespace
 
