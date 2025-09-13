@@ -46,6 +46,8 @@ set(SOURCE_FILES
     cpm4.cpp
     gps.cpp
     logger.cpp
+    platform.cpp
+    odrv.cpp
     main.cpp
 )
 

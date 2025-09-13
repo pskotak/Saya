@@ -13,6 +13,7 @@
 #include "gps.h"
 #include "joystick.h"
 #include "logger.h"
+#include "platform.h"
 
 bool parseGeoString(const std::string& geoString, double& lat, double& lon) {
     try {
@@ -86,7 +87,7 @@ int main(int argc, char **argv) {
 
     std::cout << "Starting CPM4 thread..." << std::endl;
     CPM4Thread = std::thread(&RunCom);
-    std::cout << "Starting GPS thread..." << std::endl;
+
     std::thread GPSThread(RunGPS);
 
     std::thread T265Thread;
@@ -97,6 +98,7 @@ int main(int argc, char **argv) {
         std::cout << ">>> NO Joystick" << std::endl;
         JoyOK = false;
     }
+    platform::InitPlatform();
 
     vision::StartPcRow = 160;
     vision::EndPcRow = D455H-120;
@@ -172,8 +174,15 @@ int main(int argc, char **argv) {
                 std::cout << "\x1b[3F" << "<GPS> Fix: " << GPSData.Fix << " Lat: " << Lat*1e-7 << " Lon: " << Lon*1e-7 << " GLat: " << GoalLat*1e-7 << " GLon: " << GoalLon*1e-7 << " Alive: " << Cnt++ << std::endl;
                 //std::cout << "\x1b[3F" << "Counter: " << Cnt << "                                   " << std::endl;
             }
-            std::cout << "<Platform> " << "IDLE" << " Log: " << logger::Logging << std::endl;
-            std::cout << "<Mission> " << "IDLE" << std::endl;
+            if (platform::Armed) {
+                std::cout << "<Platform> " << "ARMED" << " Log: " << logger::Logging << "                    " << std::endl;
+            }
+            else {
+                std::cout << "<Platform> " << "IDLE" << " Log: " << logger::Logging << "                     " << std::endl;
+            }
+
+
+            std::cout << "<Mission> " << "IDLE" << "                                                " << std::endl;
 // END Status screen ----------------------------------------------------------
             NewGPS = false;
         }
@@ -184,12 +193,14 @@ int main(int argc, char **argv) {
             if (joy.TrigArm) {
                 joy.TrigArm = false;
                 if (BigRedSwitch == false) { // Nepovolit armovani pri stisknutem BigRed
+                    platform::Arm();
                     //odrive.SetArm = true;
                     //std::cout << ">>> Joy ARM" << std::endl;
                 }
             }
             if (joy.TrigIdle) {
                 joy.TrigIdle = false;
+                platform::Idle();
                 //odrive.SetIdle = true;
                 //std::cout << ">>> Joy IDLE" << std::endl;
             }
@@ -214,6 +225,7 @@ int main(int argc, char **argv) {
             //     outfile << Lat << "," << Lon << std::endl;
             //     std::cout << "> GPS Mark: Lat = " << Lat*1E-7 << ", Lon = " << Lon*1E-7 << std::endl;
             // }
+            platform::GoJoy(joy.Speed,joy.Dir);
         }
 
         vision::Frame();
@@ -272,6 +284,7 @@ int main(int argc, char **argv) {
             //cv::imshow("RGB",vision::RGB_image);
             vision::NewD455 = false;
         }
+        platform::Update();
 
         // Program lze ukoncit stiskem BigRedSwitch a nasledne stiskem Mission button
         if (BigRedSwitch && MissionPressed) {
@@ -299,11 +312,15 @@ int main(int argc, char **argv) {
         usleep(2000);
     }
 
+    platform::Idle();
     if (logger::Logging) {
         logger::EndLog();
     }
 
     std::cout << "-------------------------" << std::endl;
+
+    platform::Shutdown();
+
     std::cout << "down T265" << std::endl;
     t265::ShutdownT265 = true;
     T265Thread.join();
