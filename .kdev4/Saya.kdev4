@@ -25,17 +25,25 @@ Name=saya
 Type=Native Application
 
 [Launch][Launch Configuration 0][Data]
+Arguments=
 Debugger Shell=
 Dependencies=@Variant(\x00\x00\x00\t\x00\x00\x00\x00\x01\x00\x00\x00\x0b\x00\x00\x00\x00\x02\x00\x00\x00\x08\x00S\x00a\x00y\x00a\x00\x00\x00\x08\x00s\x00a\x00y\x00a)
 Dependency Action=Build
 Display Demangle Names=true
 Display Static Members=false
+EnvironmentGroup=
+Executable=file:///home/owner/Develop/Saya
+External Terminal=xfce4-terminal --hold --command %exe
 GDB Path=
+Kill Before Executing Again=4194304
 Project Target=Saya,saya
 Remote GDB Config Script=
 Remote GDB Run Script=
 Remote GDB Shell Script=
 Start With=ApplicationOutput
+Use External Terminal=true
+Working Directory=
+isExecutable=false
 
 [Project]
 VersionControlSupport=kdevgit

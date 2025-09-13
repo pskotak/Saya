@@ -12,6 +12,7 @@ if(NOT EIGEN3_FOUND)
 endif()
 
 find_package( OpenCV REQUIRED )
+find_package(ZXing REQUIRED)
 set(DEPENDENCIES ${DEPENDENCIES} realsense2)
 
 include_directories("/usr/local/include")
@@ -38,11 +39,13 @@ set(SOURCE_FILES
     LocalMap/grid_map/src/iterators/PolygonIterator.cpp
     LocalMap/grid_map/src/iterators/LineIterator.cpp
     LocalMap/locmap.cpp
+    t265.cpp
+    qrcode.cpp
     main.cpp
 )
 
 add_executable(saya ${SOURCE_FILES})
 
-target_link_libraries(saya ${DEPENDENCIES} ${OpenCV_LIBS})
+target_link_libraries(saya ${DEPENDENCIES} ${OpenCV_LIBS} ZXing::ZXing)
 
 install(TARGETS saya RUNTIME DESTINATION bin)
