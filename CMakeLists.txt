@@ -39,8 +39,12 @@ set(SOURCE_FILES
     LocalMap/grid_map/src/iterators/PolygonIterator.cpp
     LocalMap/grid_map/src/iterators/LineIterator.cpp
     LocalMap/locmap.cpp
+    joystick.cpp
     t265.cpp
     qrcode.cpp
+    config.cpp
+    cpm4.cpp
+    gps.cpp
     main.cpp
 )
 
